@@ -9,6 +9,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   format:
     runs-on: ubuntu-slim
@@ -62,8 +66,21 @@ jobs:
       - name: Run | Frontend syntax check
         run: node --check custom_components/location_timeline/frontend/location-timeline-panel.js
 
+  jactionlint:
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup | Development environment
+        uses: $/.github/actions/setup
+
+      - name: Run | Lint workflows
+        run: jactionlint
+
   status-check:
-    needs: [format, lint, test, js-check]
+    needs: [format, lint, test, js-check, jactionlint]
     if: ${{ always() }}
     runs-on: ubuntu-slim
     timeout-minutes: 5

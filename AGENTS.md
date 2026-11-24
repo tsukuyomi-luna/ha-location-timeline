@@ -4,7 +4,7 @@ OwnTracks Recorder の位置履歴を日別のタイムラインとして表示�
 
 ## 開発環境
 
-ツールの版は `mise.toml` と `mise.lock` で固定しています（Python、uv、Node.js、gh-actions-lock、actionlint）。Python の依存は `uv.lock` で固定しています。
+ツールの版は `mise.toml` と `mise.lock` で固定しています（Python、uv、Node.js、gh-actions-lock、jactionlint、shellcheck）。Python の依存は `uv.lock` で固定しています。
 
 ```sh
 mise install
@@ -20,6 +20,7 @@ uv run ruff format --check .
 uv run ruff check .
 uv run pytest
 node --check custom_components/location_timeline/frontend/location-timeline-panel.js
+jactionlint
 ```
 
 整形は `uv run ruff format .`、lint の自動修正は `uv run ruff check --fix .` で行います。`.github/workflows/validate.yml` は hassfest と HACS の検証を実行します。どちらも GitHub Actions 上でだけ動きます。
@@ -46,14 +47,14 @@ node --check custom_components/location_timeline/frontend/location-timeline-pane
 
 ## GitHub Actions
 
-`uses:` には正確なバージョンタグを書き、コミット SHA は `.github/workflows/actions.lock` で固定します。同じリポジトリの composite action（`.github/actions/setup`）は `uses: $/.github/actions/setup` と書きます。actionlint はこの記法を解釈しないため、`.github/actionlint.yaml` で該当エラーだけを無視しています。
+`uses:` には正確なバージョンタグを書き、コミット SHA は `.github/workflows/actions.lock` で固定します。同じリポジトリの composite action（`.github/actions/setup`）は `uses: $/.github/actions/setup` と書きます。
 
 `uses:` を追加・変更したら、ロックファイルを更新して検証します。`actions.lock` は手で編集しません。
 
 ```sh
 gh-actions-lock
 gh-actions-lock --no-fix
-actionlint
+jactionlint
 ```
 
 ## リリース

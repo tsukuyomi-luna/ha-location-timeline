@@ -1,5 +1,0 @@
-# actionlint does not understand the `$/` local action syntax of gh actions-lock.
-paths:
-  .github/workflows/*.yml:
-    ignore:
-      - 'specifying action "\$/\.github/actions/setup" in invalid format'
