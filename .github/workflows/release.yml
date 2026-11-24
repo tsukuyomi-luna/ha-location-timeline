@@ -1,0 +1,63 @@
+# This workflow is managed by gh actions-lock.
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      release_type:
+        description: Version bump
+        required: true
+        type: choice
+        options: [patch, minor, major]
+  pull_request:
+    types: [closed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: easy-release
+  cancel-in-progress: false
+
+jobs:
+  prepare:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    permissions:
+      contents: write
+      pull-requests: write
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.sha }}
+
+      - name: Setup | Development environment
+        uses: $/.github/actions/setup
+
+      - name: Release | Prepare pull request
+        uses: shun-shobon/easy-release@v0.3.0
+        with:
+          mode: prepare
+          release-type: ${{ inputs.release_type }}
+
+  publish:
+    if: >-
+      github.event_name == 'pull_request'
+      && github.event.pull_request.merged
+      && github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7.0.1
+        with:
+          ref: ${{ github.event.pull_request.merge_commit_sha }}
+
+      - name: Release | Publish
+        uses: shun-shobon/easy-release@v0.3.0
+        with:
+          mode: publish

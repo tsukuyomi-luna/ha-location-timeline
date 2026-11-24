@@ -1,0 +1,4 @@
+{
+  "packageFiles": ["custom_components/location_timeline/manifest.json"],
+  "updateCommand": "uv version --no-sync \"$RELEASE_VERSION\""
+}
