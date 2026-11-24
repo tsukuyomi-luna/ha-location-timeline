@@ -1,11 +1,21 @@
 {
   "domain": "location_timeline",
   "name": "Location Timeline",
-  "after_dependencies": ["zone"],
-  "categories": ["presence_location.trackers"],
-  "codeowners": ["@tsukuyomi-luna"],
+  "after_dependencies": [
+    "zone"
+  ],
+  "categories": [
+    "presence_location.trackers"
+  ],
+  "codeowners": [
+    "@tsukuyomi-luna"
+  ],
   "config_flow": false,
-  "dependencies": ["http", "frontend", "panel_custom"],
+  "dependencies": [
+    "http",
+    "frontend",
+    "panel_custom"
+  ],
   "documentation": "https://github.com/tsukuyomi-luna/ha-location-timeline",
   "integration_type": "service",
   "iot_class": "local_polling",
