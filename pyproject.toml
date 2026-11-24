@@ -1,0 +1,24 @@
+[project]
+name = "ha-location-timeline"
+version = "0.1.0"
+description = "Home Assistant custom integration: Google Maps Timeline-like panel backed by OwnTracks Recorder"
+requires-python = ">=3.14"
+dependencies = []
+
+[dependency-groups]
+dev = ["pytest", "ruff"]
+
+[tool.uv]
+package = false
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py314"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+# 日本語の全角括弧などをコメント・文字列に使うため
+ignore = ["RUF001", "RUF002", "RUF003"]

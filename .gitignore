@@ -1,0 +1,13 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+.ruff_cache/
+# 実データを誤ってコミットしない
+*.sqlite
+*.sqlite3
+Timeline.json
+google_segments.json
+places.json
+.DS_Store
+node_modules/
