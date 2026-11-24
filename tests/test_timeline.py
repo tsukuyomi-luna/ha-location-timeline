@@ -348,8 +348,11 @@ def test_mode_from_motion_activities_majority():
     assert tl.infer_mode(p, [[*HOME, 0], [*OFFICE, 180]]) == "vehicle"
 
 
+def north(m: float) -> list[float]:
+    return list(offset(HOME, m))
+
+
 def test_mode_from_speed():
-    north = lambda m: list(offset(HOME, m))  # noqa: E731
     walk = [[*north(0), 0], [*north(400), 300], [*north(800), 600]]  # 4.8 km/h
     car = [[*north(0), 0], [*north(5000), 300], [*north(10000), 600]]  # 60 km/h
     middle = [[*north(0), 0], [*north(1000), 300], [*north(2000), 600]]  # 12 km/h
@@ -357,6 +360,96 @@ def test_mode_from_speed():
     assert tl.infer_mode([], car) == "vehicle"
     assert tl.infer_mode([], middle) == "unknown"
     assert tl.infer_mode([], [[*north(0), 0]]) == "unknown"
+
+
+def sparse_bus_ride(t0: int):
+    """10 min at HOME, a sparse ~21 min bus ride south with a stop, 30 min at the destination.
+
+    Legs (seconds, km/h): walk to the bus stop, then the ride with a short stop.
+    """
+    legs = [(240, 4.5), (300, 9.0), (20, 3.6), (300, 14.0), (300, 8.0), (120, 7.5)]
+    pts = [pt(t0 + i * M, offset(HOME, (i % 2) * 5)) for i in range(11)]
+    t, south_m = pts[-1]["tst"], 0.0
+    route = []
+    for dt, kmh in legs:
+        t += dt
+        south_m += kmh / 3.6 * dt
+        route.append((t, offset(HOME, -south_m)))
+    *ride, (arrival, dest) = route
+    extras = [
+        {"motionactivities": ["walking"], "vel": 5},
+        {"vel": 3},
+        {"motionactivities": ["stationary"], "vel": 0},
+        {"vel": 18},
+        {},
+    ]
+    pts.extend(pt(tst, latlon, **extra) for (tst, latlon), extra in zip(ride, extras, strict=True))
+    pts.extend(pt(arrival + i * M, offset(dest, 0, (i % 2) * 5)) for i in range(31))
+    return pts
+
+
+def test_sparse_bus_ride_with_one_walking_vote_is_vehicle():
+    r = build(sparse_bus_ride(DAY_START + 9 * H))
+    segs = [s for s in r["segments"] if s["type"] != "gap"]
+    assert [s["type"] for s in segs] == ["stay", "move", "stay"]
+    move = segs[1]
+    avg_kmh = move["distance_m"] / (move["end"] - move["start"]) * 3.6
+    assert 8 < avg_kmh < 9
+    assert move["mode"] == "vehicle"
+
+
+def test_walk_with_walking_votes_and_traffic_light_stays_walk():
+    t0 = DAY_START + 9 * H
+    pts, _ = dense_commute(t0)
+    light = offset(HOME, 750)
+    pts = [p for p in pts if not (t0 + 69 * M <= p["tst"] <= t0 + 71 * M)]
+    pts.extend(pt(t0 + 69 * M + i * 30, light) for i in range(7))
+    for p in pts:
+        if t0 + 61 * M <= p["tst"] < t0 + 80 * M and p["tst"] % (3 * M) == 0:
+            p["motionactivities"] = ["walking"]
+    r = build(pts)
+    segs = [s for s in r["segments"] if s["type"] != "gap"]
+    assert [s["type"] for s in segs] == ["stay", "move", "stay"]
+    assert segs[1]["mode"] == "walk"
+
+
+MIDDLE_SPEED_PATH = [[*north(0), 0], [*north(1000), 300], [*north(2000), 600]]  # 12 km/h
+WALK_PATH = [[*north(0), 0], [*north(400), 300], [*north(800), 600]]  # 4.8 km/h
+
+
+def test_walking_majority_loses_to_automotive_when_speed_is_not_walk():
+    p = [
+        pt(100, HOME, motionactivities=["walking"]),
+        pt(200, HOME, motionactivities=["walking"]),
+        pt(300, HOME, motionactivities=["walking"]),
+        pt(400, HOME, motionactivities=["automotive"]),
+    ]
+    assert tl.infer_mode(p, MIDDLE_SPEED_PATH) == "vehicle"
+    assert tl.infer_mode(p, WALK_PATH) == "walk"
+
+
+def test_middle_speed_without_motion_votes_is_unknown():
+    p = [pt(100, HOME), pt(300, HOME, motionactivities=["stationary"])]
+    assert tl.infer_mode(p, MIDDLE_SPEED_PATH) == "unknown"
+
+
+def test_short_leg_does_not_skew_time_weighted_top_speed():
+    # 5 min legs at 4.8 km/h and one 15 s leg at 20 km/h (unweighted p90 would be ~12 km/h)
+    path, t, m = [[*north(0), 0]], 0, 0.0
+    for dt, kmh in [(300, 4.8), (300, 4.8), (15, 20.0), (300, 4.8), (300, 4.8), (300, 4.8)]:
+        t += dt
+        m += kmh / 3.6 * dt
+        path.append([*north(m), t])
+    assert tl.classify_speed([], path) is tl.SpeedClass.WALK
+    assert tl.infer_mode([], path) == "walk"
+
+
+def test_reported_velocity_marks_vehicle_but_never_breaks_walk():
+    fast = [pt(100, HOME, vel=12), pt(300, HOME, vel=30)]
+    assert tl.classify_speed(fast, MIDDLE_SPEED_PATH) is tl.SpeedClass.VEHICLE
+    assert tl.infer_mode(fast, MIDDLE_SPEED_PATH) == "vehicle"
+    assert tl.infer_mode(fast, WALK_PATH) == "walk"
+    assert tl.infer_mode([pt(100, HOME, vel="30")], MIDDLE_SPEED_PATH) == "unknown"
 
 
 # ---------------------------------------------------------------- merge & gaps

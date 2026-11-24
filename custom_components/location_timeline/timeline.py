@@ -10,6 +10,7 @@ import math
 from collections import Counter
 from collections.abc import Callable, Iterable, Mapping, Sequence
 from datetime import date, datetime, time, timedelta
+from enum import Enum
 from itertools import pairwise
 from typing import Any
 from zoneinfo import ZoneInfo
@@ -32,6 +33,13 @@ GAP_MIN_S = 10 * 60
 DWELL_MIN_GAP_S = 10 * 60
 DWELL_MAX_SPEED_MS = 0.5
 DWELL_WALK_SPEED_MS = 1.25
+# 速度による移動手段の分類。上位の速度は、レッグ（隣り合う点の間）の速度を
+# 所要時間で重み付けした分位点
+SPEED_TOP_QUANTILE = 0.9
+WALK_MAX_AVG_KMH = 6.5
+WALK_MAX_TOP_KMH = 9.0
+# 上位の速度か、点が持つ端末報告速度 vel の最大値がこれ以上なら乗り物
+VEHICLE_MIN_KMH = 25.0
 
 GOOGLE_MODE_MAP: Mapping[str, str] = {
     "walking": "walk",
@@ -339,47 +347,91 @@ def detect_clusters(points: Sequence[Point]) -> list[list[Point]]:
     return clusters
 
 
-def _percentile(values: Sequence[float], q: float) -> float:
-    vs = sorted(values)
-    if not vs:
-        return 0.0
-    k = (len(vs) - 1) * q
-    lo = math.floor(k)
-    hi = math.ceil(k)
-    return vs[lo] + (vs[hi] - vs[lo]) * (k - lo)
+class SpeedClass(Enum):
+    """How a move's speed compares with walking and with vehicles."""
+
+    WALK = "walk"
+    VEHICLE = "vehicle"
+    # 徒歩には速すぎるが、乗り物と断定できない（自転車やランニングもありうる）
+    FAST = "fast"
+
+
+def _time_weighted_quantile(legs: Sequence[tuple[float, float]], q: float) -> float:
+    """Quantile of leg speeds, each leg weighted by its duration.
+
+    ``legs`` holds (speed, duration) pairs with positive durations.
+    """
+    ordered = sorted(legs)
+    target = q * sum(dt for _, dt in ordered)
+    acc = 0.0
+    for speed, dt in ordered:
+        acc += dt
+        if acc >= target:
+            return speed
+    return ordered[-1][0]
+
+
+def classify_speed(
+    move_points: Sequence[Point], path: Sequence[Sequence[float]]
+) -> SpeedClass | None:
+    """Classify a move by speed; None when the path has no duration.
+
+    The device-reported ``vel`` (km/h) only marks a move as a vehicle. It never
+    makes a move non-walking, so that a momentary GPS outlier cannot break a walk.
+    """
+    if len(path) < 2:
+        return None
+    duration = path[-1][2] - path[0][2]
+    if duration <= 0:
+        return None
+    avg_kmh = path_length_m(path) / duration * 3.6
+    legs = [
+        (haversine_m(a[0], a[1], b[0], b[1]) / (b[2] - a[2]) * 3.6, b[2] - a[2])
+        for a, b in pairwise(path)
+        if b[2] > a[2]
+    ]
+    top_kmh = _time_weighted_quantile(legs, SPEED_TOP_QUANTILE)
+    if avg_kmh < WALK_MAX_AVG_KMH and top_kmh < WALK_MAX_TOP_KMH:
+        return SpeedClass.WALK
+    vels = [v for p in move_points if (v := _num(p.get("vel"))) is not None]
+    if top_kmh >= VEHICLE_MIN_KMH or max(vels, default=0.0) >= VEHICLE_MIN_KMH:
+        return SpeedClass.VEHICLE
+    return SpeedClass.FAST
 
 
 def infer_mode(move_points: Sequence[Point], path: Sequence[Sequence[float]]) -> str:
-    """Infer the travel mode from motion activities, falling back to speed."""
+    """Infer the travel mode from motion activities checked against speed.
+
+    Walking votes count only when the speed is walk-like. Without remaining
+    votes, the speed class decides.
+    """
+    speed = classify_speed(move_points, path)
+    walk_rejected = speed is not None and speed is not SpeedClass.WALK
     votes: Counter[str] = Counter()
+    walking_dropped = False
     for p in move_points:
         acts = p.get("motionactivities")
         if not isinstance(acts, list):
             continue
         for a in acts:
             mode = MOTION_MODE_MAP.get(a) if isinstance(a, str) else None
-            if mode:
+            if mode == "walk" and walk_rejected:
+                walking_dropped = True
+            elif mode:
                 votes[mode] += 1
     if votes:
         return votes.most_common(1)[0][0]
 
-    if len(path) < 2:
-        return "unknown"
-    duration = path[-1][2] - path[0][2]
-    if duration <= 0:
-        return "unknown"
-    avg_kmh = path_length_m(path) / duration * 3.6
-    speeds = []
-    for a, b in pairwise(path):
-        dt = b[2] - a[2]
-        if dt > 0:
-            speeds.append(haversine_m(a[0], a[1], b[0], b[1]) / dt * 3.6)
-    p90 = _percentile(speeds, 0.9) if speeds else avg_kmh
-    if avg_kmh < 6.5 and p90 < 9:
-        return "walk"
-    if p90 >= 25:
-        return "vehicle"
-    return "unknown"
+    match speed:
+        case SpeedClass.WALK:
+            return "walk"
+        case SpeedClass.VEHICLE:
+            return "vehicle"
+        case SpeedClass.FAST if walking_dropped:
+            # 端末は動作を記録していたのに、running も cycling も報告していない
+            return "vehicle"
+        case _:
+            return "unknown"
 
 
 def dwell_end(cluster: Sequence[Point], nxt: Point) -> int | None:
