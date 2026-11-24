@@ -13,7 +13,7 @@ permissions: {}
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   hassfest:
@@ -24,6 +24,8 @@ jobs:
     steps:
       - name: Setup | Checkout
         uses: actions/checkout@v7.0.1
+        with:
+          persist-credentials: false
 
       - name: Verify | hassfest
         uses: home-assistant/actions/hassfest@2026.11.0

@@ -5,7 +5,7 @@ runs:
   using: composite
   steps:
     - name: Setup | mise
-      uses: jdx/mise-action@v5.3.0
+      uses: jdx/mise-action@v5.3.0 # zizmor: ignore[unpinned-uses] 呼び出し元ワークフローのactions.lockで固定される
 
     - name: Setup | Resolve uv cache
       id: uv-cache
@@ -13,7 +13,7 @@ runs:
       run: echo "path=$(uv cache dir)" >> "$GITHUB_OUTPUT"
 
     - name: Setup | Cache uv
-      uses: actions/cache@v6.1.0
+      uses: actions/cache@v6.1.0 # zizmor: ignore[unpinned-uses] 呼び出し元ワークフローのactions.lockで固定される
       with:
         path: ${{ steps.uv-cache.outputs.path }}
         key: ${{ runner.os }}-uv-${{ hashFiles('uv.lock') }}

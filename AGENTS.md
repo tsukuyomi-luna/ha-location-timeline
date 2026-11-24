@@ -4,7 +4,7 @@ OwnTracks Recorder の位置履歴を日別のタイムラインとして表示�
 
 ## 開発環境
 
-ツールの版は `mise.toml` と `mise.lock` で固定しています（Python、uv、Node.js、gh-actions-lock、jactionlint、shellcheck）。Python の依存は `uv.lock` で固定しています。
+ツールの版は `mise.toml` と `mise.lock` で固定しています（Python、uv、Node.js、gh-actions-lock、jactionlint、shellcheck、zizmor）。Python の依存は `uv.lock` で固定しています。
 
 ```sh
 mise install
@@ -21,6 +21,7 @@ uv run ruff check .
 uv run pytest
 node --check custom_components/location_timeline/frontend/location-timeline-panel.js
 jactionlint
+zizmor .
 ```
 
 整形は `uv run ruff format .`、lint の自動修正は `uv run ruff check --fix .` で行います。`.github/workflows/validate.yml` は hassfest と HACS の検証を実行します。どちらも GitHub Actions 上でだけ動きます。
