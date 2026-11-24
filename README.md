@@ -104,17 +104,6 @@ Both endpoints require Home Assistant authentication. With `require_admin: true`
 - Leaflet is bundled, so no other CDN is used.
 - Do not put data files (sidecar, `places.json`, `Timeline.json`, `towns.sqlite`) under `/config/www/`. Files there are served at `/local/` without authentication. Keep them somewhere like `/config/location_timeline/`; the integration returns data only through the authenticated API.
 
-### Development
-
-```sh
-uv run pytest
-uv run ruff check .
-uv run ruff format --check .
-node --check custom_components/location_timeline/frontend/location-timeline-panel.js
-```
-
-`timeline.py` and `geocode.py` are pure logic without Home Assistant dependencies; the tests load them by file path. Tests use synthetic data only.
-
 ### License
 
 MIT. See [LICENSE](LICENSE).
@@ -224,17 +213,6 @@ CSV は [Geolonia 住所データ](https://github.com/geolonia/japanese-addresse
 - 外部への通信は、ブラウザから OpenStreetMap（`tile.openstreetmap.org`）への地図タイルの取得だけです。表示中の地図範囲（タイル番号）とブラウザの IP アドレスが OSM のタイルサーバーに伝わります。
 - Leaflet は同梱しているため、ほかの CDN は使いません。
 - データファイル（sidecar、`places.json`、`Timeline.json`、`towns.sqlite`）を `/config/www/` に置かないでください。そこのファイルは `/local/` で認証なしに配信されます。`/config/location_timeline/` などに置いてください。この統合は認証付きの API 経由でのみデータを返します。
-
-### 開発
-
-```sh
-uv run pytest
-uv run ruff check .
-uv run ruff format --check .
-node --check custom_components/location_timeline/frontend/location-timeline-panel.js
-```
-
-`timeline.py` と `geocode.py` は Home Assistant に依存しない純粋なロジックで、テストはファイルパスから直接読み込みます。テストは合成データのみを使います。
 
 ### ライセンス
 
