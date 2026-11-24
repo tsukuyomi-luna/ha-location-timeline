@@ -1,0 +1,9 @@
+[tools]
+python = "3.14.10"
+uv = "0.13.9"
+node = "24.22.3"
+"github:github/gh-actions-lock" = { version = "0.5.1", bin = "gh-actions-lock" }
+actionlint = "1.7.12"
+
+[settings]
+lockfile = true
