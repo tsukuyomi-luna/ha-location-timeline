@@ -1,8 +1,10 @@
+# This workflow is managed by gh actions-lock.
 name: Validate
 
 on:
-  push:
   pull_request:
+  push:
+    branches: [main]
   schedule:
     - cron: "0 0 * * *"
   workflow_dispatch:
@@ -11,19 +13,23 @@ permissions: {}
 
 jobs:
   hassfest:
-    name: hassfest
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
-      - uses: actions/checkout@v7
-      - uses: home-assistant/actions/hassfest@master
+      - name: Setup | Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Verify | hassfest
+        uses: home-assistant/actions/hassfest@2026.11.0
 
   hacs:
-    name: HACS
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-      - uses: hacs/action@main
+      - name: Verify | HACS
+        uses: hacs/action@22.5.0
         with:
           category: integration
           # No brand images are shipped.

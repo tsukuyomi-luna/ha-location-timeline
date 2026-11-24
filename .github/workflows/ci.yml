@@ -1,0 +1,74 @@
+# This workflow is managed by gh actions-lock.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  format:
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup | Development environment
+        uses: $/.github/actions/setup
+
+      - name: Run | Format check
+        run: uv run ruff format --check .
+
+  lint:
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup | Development environment
+        uses: $/.github/actions/setup
+
+      - name: Run | Lint
+        run: uv run ruff check .
+
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup | Development environment
+        uses: $/.github/actions/setup
+
+      - name: Run | Test
+        run: uv run pytest
+
+  js-check:
+    runs-on: ubuntu-slim
+    timeout-minutes: 10
+    steps:
+      - name: Setup | Checkout
+        uses: actions/checkout@v7.0.1
+
+      - name: Setup | Development environment
+        uses: $/.github/actions/setup
+
+      - name: Run | Frontend syntax check
+        run: node --check custom_components/location_timeline/frontend/location-timeline-panel.js
+
+  status-check:
+    needs: [format, lint, test, js-check]
+    if: ${{ always() }}
+    runs-on: ubuntu-slim
+    timeout-minutes: 5
+    steps:
+      - name: Verify | All CI jobs succeeded
+        env:
+          RESULTS: ${{ toJSON(needs.*.result) }}
+        run: jq -e 'all(.[]; . == "success")' <<< "$RESULTS"
