@@ -1,6 +1,6 @@
 [project]
 name = "ha-location-timeline"
-version = "0.1.0"
+version = "0.1.1"
 description = "Home Assistant custom integration: Google Maps Timeline-like panel backed by OwnTracks Recorder"
 requires-python = ">=3.14"
 dependencies = []
